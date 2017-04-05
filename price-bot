@@ -190,16 +190,15 @@ getPrice().then((price) => {
   var c = web3.eth.contract(abi).at(address);
   var wad = toBytes32(price);
   var zzz = parseInt(Date.now() / 1000, 10) + 86400;
-  // c.prod(wad, zzz, (error, res) => {
-  //   if (error) {
-  //     console.log('Something went wrong');
-  //     process.exit(1);
-  //   } else {
-  //     console.log('Updated price');
-  //     process.exit(0);
-  //   }
-  // });
-  console.log({wad, zzz})
+  c.prod(wad, zzz, (error, res) => {
+    if (error) {
+      console.log('Something went wrong');
+      process.exit(1);
+    } else {
+      console.log('Updated price');
+      process.exit(0);
+    }
+  });
 }).catch((error) => {
   console.log(error);
 });
