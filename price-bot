@@ -18,8 +18,6 @@ function getDefaultWeb3() {
     throw error
   }
 
-  web3.eth.defaultAccount = process.env.ETH_ACCOUNT || process.env.ETH_FROM || web3.eth.coinbase
-
   return web3
 }
 
@@ -58,11 +56,17 @@ var env = getDefaultEnv(web3);
 
 var args = process.argv.slice(2);
 
-var address = args[0] || process.env.FEED_ADDRESS;
-var get_from = args[1] || "1";
+var from = args[0];
+var address = args[1] || process.env.FEED_ADDRESS;
+var get_from = args[2] || "1";
+
+if (!from || !web3.isAddress(from)) {
+  console.log('First argument is your account.');
+  process.exit(1);
+}
 
 if (!address || !web3.isAddress(address)) {
-  console.log('Send a valid address as the first argument');
+  console.log('Second argument is the ds-cache.');
   process.exit(1);
 }
 
@@ -186,15 +190,16 @@ getPrice().then((price) => {
   var c = web3.eth.contract(abi).at(address);
   var wad = toBytes32(price);
   var zzz = parseInt(Date.now() / 1000, 10) + 86400;
-  c.prod(wad, zzz, (error, res) => {
-    if (error) {
-      console.log('Something went wrong');
-      process.exit(1);
-    } else {
-      console.log('Updated price');
-      process.exit(0);
-    }
-  });
+  // c.prod(wad, zzz, (error, res) => {
+  //   if (error) {
+  //     console.log('Something went wrong');
+  //     process.exit(1);
+  //   } else {
+  //     console.log('Updated price');
+  //     process.exit(0);
+  //   }
+  // });
+  console.log({wad, zzz})
 }).catch((error) => {
   console.log(error);
 });
