@@ -1,0 +1,200 @@
+#!/usr/bin/env node
+
+var request = require('request');
+var Web3 = require('web3');
+
+function getDefaultWeb3() {
+  var HOST = process.env.ETH_RPC_HOST || "localhost"
+  var PORT = process.env.ETH_RPC_PORT || 8545
+  var URL  = process.env.ETH_RPC_URL  || "http://" + HOST + ":" + PORT
+  var web3 = new Web3(new Web3.providers.HttpProvider(URL))
+
+  try {
+    web3.eth.coinbase
+  } catch (err) {
+    var message = "Could not connect to Ethereum RPC server at " + URL
+    var error = new Error(message)
+    error.eth_rpc_connection = true
+    throw error
+  }
+
+  web3.eth.defaultAccount = process.env.ETH_ACCOUNT || process.env.ETH_FROM || web3.eth.coinbase
+
+  return web3
+}
+
+function getDefaultEnv(web3) {
+  process.env.ETH_ENV || getNetworkName(web3.version.network)
+}
+
+function getNetworkName(version) {
+  if (version == 1) {
+    return "live"
+  } else if (version == 2) {
+    return "morden"
+  } else if (version == 3) {
+    return "ropsten"
+  } else if (version == 42) {
+    return "kovan"
+  } else {
+    throw new Error("Unknown network version: " + version)
+  }
+}
+
+var padLeft = function (string, chars, sign) {
+  return new Array(chars - string.length + 1).join(sign ? sign : "0") + string;
+};
+
+function toBytes32(x) {
+  let y = web3.toHex(web3.toWei(x));
+  y = y.replace('0x', '');
+  y = padLeft(y, 64);
+  y = '0x' + y;
+  return y;
+}
+
+var web3 = getDefaultWeb3();
+var env = getDefaultEnv(web3);
+
+var args = process.argv.slice(2);
+
+var address = args[0] || process.env.FEED_ADDRESS;
+var get_from = args[1] || "1";
+
+if (!address || !web3.isAddress(address)) {
+  console.log('Send a valid address as the first argument');
+  process.exit(1);
+}
+
+var abi = [
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "wut",
+        "type": "bytes32"
+      },
+      {
+        "name": "Zzz",
+        "type": "uint128"
+      }
+    ],
+    "name": "prod",
+    "outputs": [],
+    "payable": false,
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "peek",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32"
+      },
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "payable": false,
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "zzz",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint128"
+      }
+    ],
+    "payable": false,
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "payable": false,
+    "type": "function"
+  },
+];
+
+const getPrice = () => {
+  return new Promise((resolve, reject) => {
+    var getPrice;
+    var url;
+    switch(get_from) {
+      case "1":
+        console.log('Getting price from Etherscan');
+        url = 'https://api.etherscan.io/api?module=stats&action=ethprice';
+        getPrice = (json) => {
+          if (json && json.result) {
+            return json.result.ethusd;
+          }
+          return false;
+        };
+        break;
+      case "2":
+        console.log('Getting price from CoinmarketCap');
+        url = 'https://api.coinmarketcap.com/v1/ticker/ethereum/';
+        getPrice = (json) => {
+          if (json[0] && json[0].price_usd) {
+            return json[0].price_usd;
+          }
+          return false;
+        };
+        break;
+      case "3":
+        console.log('Getting price from Bitfinex');
+        url = 'https://api.bitfinex.com/v1/pubticker/ETHUSD';
+        getPrice = (json) => {
+          if (json && json.last_price) {
+            return json.last_price;
+          }
+          return false;
+        };
+        break;
+    }
+    request(url, (error, response, body) => {
+      if (!error && response.statusCode === 200) {
+        const data = JSON.parse(body);
+        const price = getPrice(data);
+        if (price) {
+          resolve(price);
+        } else {
+          reject(new Error('Got a response but not a price'));
+        }
+      } else {
+        reject(error);
+      }
+    });
+  });
+}
+
+getPrice().then((price) => {
+  console.log('Found price:', price, 'USD_ETH.');
+  var c = web3.eth.contract(abi).at(address);
+  var wad = toBytes32(price);
+  var zzz = parseInt(Date.now() / 1000, 10) + 86400;
+  c.prod(wad, zzz, (error, res) => {
+    if (error) {
+      console.log('Something went wrong');
+      process.exit(1);
+    } else {
+      console.log('Updated price');
+      process.exit(0);
+    }
+  });
+}).catch((error) => {
+  console.log(error);
+});
