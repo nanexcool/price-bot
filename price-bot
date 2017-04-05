@@ -70,6 +70,8 @@ if (!address || !web3.isAddress(address)) {
   process.exit(1);
 }
 
+web3.eth.defaultAccount = from
+
 var abi = [
   {
     "constant": false,
@@ -186,10 +188,11 @@ const getPrice = () => {
 }
 
 getPrice().then((price) => {
-  console.log('Found price:', price, 'USD_ETH.');
+  console.log('Found price:', price, 'USD_ETH');
   var c = web3.eth.contract(abi).at(address);
   var wad = toBytes32(price);
   var zzz = parseInt(Date.now() / 1000, 10) + 86400;
+  console.log('Sending transaction. If your account is locked, confirm it');
   c.prod(wad, zzz, (error, res) => {
     if (error) {
       console.log('Something went wrong');
