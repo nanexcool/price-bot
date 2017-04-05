@@ -1,8 +1,8 @@
 {
-  "name": "app",
+  "name": "price-bot",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "price-bot",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
